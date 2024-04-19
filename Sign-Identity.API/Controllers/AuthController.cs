@@ -6,7 +6,7 @@ using Sign_Identity.Domain.Entities.Auth;
 
 namespace Sign_Identity.API.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/[controller]/[action]")]
     [ApiController]
     public class AuthController : ControllerBase
     {
@@ -58,13 +58,35 @@ namespace Sign_Identity.API.Controllers
             };
 
             //create user
-            var createdUser = await _userManager.CreateAsync(user, registerDTO.Password);
+            var result = await _userManager.CreateAsync(user, registerDTO.Password);
 
-            if (!createdUser.Succeeded)
+            if (!result.Succeeded)
             {
                 return BadRequest("Something went wrong in Create");
             }
-            return Ok("Congratz");
+            return Ok();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Login(LoginDTO loginDTO)
+        {
+            if(!ModelState.IsValid)
+            {
+                return BadRequest("Something went wrong!");
+            }
+
+            var user = await _userManager.FindByEmailAsync(loginDTO.Email);
+
+            if (user is null) 
+                return NotFound("Email not found");
+
+            var result = await _signInManager.PasswordSignInAsync(user: user, password : loginDTO.Password,isPersistent: false,lockoutOnFailure: false);
+            if (!result.Succeeded) 
+                return Unauthorized("Something went wrong in Authorization");
+
+
+            return Ok(result);
+
         }
     }
 }
