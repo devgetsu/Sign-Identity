@@ -19,13 +19,6 @@ namespace Sign_Identity.Infrastructure
                         .UseNpgsql(configuration.GetConnectionString("Con"));
             });
 
-            services.AddIdentityCore<User>(options =>
-            {
-                options.Password.RequireNonAlphanumeric = false;
-                options.Password.RequireDigit = false;
-            })
-                .AddEntityFrameworkStores<SignIdentityDbContext>();
-
             return services;
         }
     }

@@ -1,5 +1,8 @@
 
+using Microsoft.AspNetCore.Identity;
+using Sign_Identity.Domain.Entities.Auth;
 using Sign_Identity.Infrastructure;
+using Sign_Identity.Infrastructure.Persistance;
 
 namespace Sign_Identity.API
 {
@@ -12,6 +15,10 @@ namespace Sign_Identity.API
             // Add services to the container.
 
             builder.Services.AddDbContextOptions(builder.Configuration);
+
+            builder.Services.AddIdentity<User, IdentityRole>()
+                .AddEntityFrameworkStores<SignIdentityDbContext>()
+                .AddDefaultTokenProviders();
 
             builder.Services.AddCors(cors =>
             {
