@@ -2,6 +2,8 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using Sign_Identity.Domain.DTOs;
 using Sign_Identity.Domain.Entities.Auth;
 
@@ -15,7 +17,7 @@ namespace Sign_Identity.API.Controllers
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly SignInManager<User> _signInManager;
 
-        public AuthController(SignInManager<User> signInManager,UserManager<User> userManager, RoleManager<IdentityRole> roleManager)
+        public AuthController(SignInManager<User> signInManager, UserManager<User> userManager, RoleManager<IdentityRole> roleManager)
         {
             _signInManager = signInManager;
             _userManager = userManager;
@@ -72,7 +74,8 @@ namespace Sign_Identity.API.Controllers
             {
                 return BadRequest("Something went wrong in Create");
             }
-            return Ok();
+
+            return Ok("Qilichdek Qilichbek");
         }
 
         [HttpPost]
@@ -89,6 +92,7 @@ namespace Sign_Identity.API.Controllers
                 return NotFound("Email not found");
 
             var result = await _signInManager.PasswordSignInAsync(user: user, password: loginDTO.Password, isPersistent: false, lockoutOnFailure: false);
+
             if (!result.Succeeded)
                 return Unauthorized("Something went wrong in Authorization");
 
@@ -97,12 +101,52 @@ namespace Sign_Identity.API.Controllers
 
         }
 
+        [HttpGet]
+        [Authorize]
+        public async Task<IActionResult> GetAllUsers()
+        {
+            try
+            {
+                return Ok(await _userManager.Users.ToListAsync());
+            }
+            catch
+            {
+                return NotFound("Users are not found");
+            }
+        }
+
+        [HttpGet("{id}")]
+        [Authorize]
+        public async Task<IActionResult> GetUserById(string id)
+        {
+            try
+            {
+                var result = await _userManager.Users.FirstOrDefaultAsync(x => x.Id == id);
+                if (result is null)
+                {
+                    return NotFound("User is not found");
+                }
+                return Ok(result);
+            }
+            catch
+            {
+                return NotFound("User is not found");
+            }
+        }
+
         [HttpPost]
         [Authorize]
         public async Task<IActionResult> LogOut()
         {
-            await _signInManager.SignOutAsync();
-            return Ok("Logged Out");
+            try
+            {
+                await _signInManager.SignOutAsync();
+                return Ok("Loged Out");
+            }
+            catch(Exception ex) 
+            {
+                return BadRequest(ex.Message);
+            }
         }
     }
 }
