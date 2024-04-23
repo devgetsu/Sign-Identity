@@ -4,9 +4,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Sign_Identity.Application.Services
+namespace Sign_Identity.Domain.DTOs
 {
-    public class TestService
+    public class RoleDTO
     {
+        public string RoleName { get; set; }
     }
 }

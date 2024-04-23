@@ -15,5 +15,6 @@ namespace Sign_Identity.Domain.DTOs
         public required int Age { get; set; }
         public required string Email { get; set; }
         public required string Password { get; set; }
+        public List<string> Roles { get; set; }
     }
 }

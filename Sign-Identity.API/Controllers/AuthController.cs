@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
+using Sign_Identity.Application.Services.AuthServices;
 using Sign_Identity.Domain.DTOs;
 using Sign_Identity.Domain.Entities.Auth;
 
@@ -16,12 +17,14 @@ namespace Sign_Identity.API.Controllers
         private readonly UserManager<User> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly SignInManager<User> _signInManager;
+        private readonly IAuthService _authService;
 
-        public AuthController(SignInManager<User> signInManager, UserManager<User> userManager, RoleManager<IdentityRole> roleManager)
+        public AuthController(SignInManager<User> signInManager, UserManager<User> userManager, RoleManager<IdentityRole> roleManager, IAuthService authService)
         {
             _signInManager = signInManager;
             _userManager = userManager;
             _roleManager = roleManager;
+            _authService = authService;
         }
 
         [HttpPost]
@@ -30,24 +33,24 @@ namespace Sign_Identity.API.Controllers
             //check model
             if (!ModelState.IsValid)
             {
-                return BadRequest("Something went wrong!");
+                throw new Exception("Validation error");
             }
             // cehck dto
             if (string.IsNullOrWhiteSpace(registerDTO.Email))
             {
-                return BadRequest("Email required");
+                throw new Exception("Validation error");
             }
             if (string.IsNullOrWhiteSpace(registerDTO.Username))
             {
-                return BadRequest("Username required");
+                throw new Exception("Validation error");
             }
             if (string.IsNullOrWhiteSpace(registerDTO.FirstName))
             {
-                return BadRequest("FirstName required");
+               throw new Exception("Validation error");
             }
             if (string.IsNullOrWhiteSpace(registerDTO.LastName))
             {
-                return BadRequest("LastName required");
+                throw new Exception("Validation error");
             }
 
             var check = await _userManager.FindByEmailAsync(registerDTO.Email);
@@ -69,7 +72,10 @@ namespace Sign_Identity.API.Controllers
 
             //create user
             var result = await _userManager.CreateAsync(user, registerDTO.Password);
-
+            foreach(var role in registerDTO.Roles)
+            {
+                await _userManager.AddToRoleAsync(user, role);
+            }
             if (!result.Succeeded)
             {
                 return BadRequest("Something went wrong in Create");
@@ -83,7 +89,7 @@ namespace Sign_Identity.API.Controllers
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest("Something went wrong!");
+               throw new Exception("Something went wrong");
             }
 
             var user = await _userManager.FindByEmailAsync(loginDTO.Email);
@@ -91,18 +97,27 @@ namespace Sign_Identity.API.Controllers
             if (user is null)
                 return NotFound("Email not found");
 
-            var result = await _signInManager.PasswordSignInAsync(user: user, password: loginDTO.Password, isPersistent: false, lockoutOnFailure: false);
+            //var result = await _signInManager.PasswordSignInAsync(user: user, password: loginDTO.Password, isPersistent: false, lockoutOnFailure: false);
 
-            if (!result.Succeeded)
-                return Unauthorized("Something went wrong in Authorization");
+           /* if (!result.Succeeded)
+                return Unauthorized("Something went wrong in Authorization");*/
+
+            var tokenDTO = await _authService.GenerateToken(user);
 
 
-            return Ok(result);
+            if (tokenDTO.IsSuccess == false || tokenDTO.Token == "" || tokenDTO.Token is null)
+            {
+                throw new Exception("Something went wrong!!");
+            }
+
+            HttpContext.Response.Cookies.Append("accessToken", tokenDTO.Token);
+
+            return Ok(tokenDTO);
 
         }
 
         [HttpGet]
-        [Authorize]
+        [Authorize(Roles = "Admin, Teacher")]
         public async Task<IActionResult> GetAllUsers()
         {
             try
@@ -116,7 +131,7 @@ namespace Sign_Identity.API.Controllers
         }
 
         [HttpGet("{id}")]
-        [Authorize]
+        [Authorize(Roles = "Admin, Teacher")]
         public async Task<IActionResult> GetUserById(string id)
         {
             try
@@ -135,12 +150,15 @@ namespace Sign_Identity.API.Controllers
         }
 
         [HttpPost]
-        [Authorize]
+        [Authorize(Roles = "Admin, Teacher, Student")]
         public async Task<IActionResult> LogOut()
         {
             try
             {
                 await _signInManager.SignOutAsync();
+
+                HttpContext.Response.Cookies.Delete("accessToken");
+
                 return Ok("Loged Out");
             }
             catch(Exception ex) 
