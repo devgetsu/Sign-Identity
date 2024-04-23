@@ -94,5 +94,6 @@ namespace Sign_Identity.API.Controllers
                 throw new Exception("Something went wrong!");
             return Ok();
         }
+
     }
 }

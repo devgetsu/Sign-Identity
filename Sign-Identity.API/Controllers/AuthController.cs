@@ -10,7 +10,7 @@ using Sign_Identity.Domain.Entities.Auth;
 
 namespace Sign_Identity.API.Controllers
 {
-    [Route("api/[controller]/[action]")]
+    [Route("api/[controller]")]
     [ApiController]
     public class AuthController : ControllerBase
     {
@@ -46,7 +46,7 @@ namespace Sign_Identity.API.Controllers
             }
             if (string.IsNullOrWhiteSpace(registerDTO.FirstName))
             {
-               throw new Exception("Validation error");
+                throw new Exception("Validation error");
             }
             if (string.IsNullOrWhiteSpace(registerDTO.LastName))
             {
@@ -72,7 +72,7 @@ namespace Sign_Identity.API.Controllers
 
             //create user
             var result = await _userManager.CreateAsync(user, registerDTO.Password);
-            foreach(var role in registerDTO.Roles)
+            foreach (var role in registerDTO.Roles)
             {
                 await _userManager.AddToRoleAsync(user, role);
             }
@@ -84,23 +84,27 @@ namespace Sign_Identity.API.Controllers
             return Ok("Qilichdek Qilichbek");
         }
 
-        [HttpPost]
+        [HttpPost("Login")]
         public async Task<IActionResult> Login(LoginDTO loginDTO)
         {
             if (!ModelState.IsValid)
             {
-               throw new Exception("Something went wrong");
+                throw new Exception("Something went wrong");
             }
 
             var user = await _userManager.FindByEmailAsync(loginDTO.Email);
 
+
             if (user is null)
                 return NotFound("Email not found");
 
+            if (user.IsDeleted == true)
+                throw new Exception("Not found");
+
             //var result = await _signInManager.PasswordSignInAsync(user: user, password: loginDTO.Password, isPersistent: false, lockoutOnFailure: false);
 
-           /* if (!result.Succeeded)
-                return Unauthorized("Something went wrong in Authorization");*/
+            /* if (!result.Succeeded)
+                 return Unauthorized("Something went wrong in Authorization");*/
 
             var tokenDTO = await _authService.GenerateToken(user);
 
@@ -122,7 +126,7 @@ namespace Sign_Identity.API.Controllers
         {
             try
             {
-                return Ok(await _userManager.Users.ToListAsync());
+                return Ok(await _userManager.Users.Where(x=>x.IsDeleted == false).ToListAsync());
             }
             catch
             {
@@ -130,17 +134,21 @@ namespace Sign_Identity.API.Controllers
             }
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("{accountId}")]
         [Authorize(Roles = "Admin, Teacher")]
         public async Task<IActionResult> GetUserById(string id)
         {
             try
             {
                 var result = await _userManager.Users.FirstOrDefaultAsync(x => x.Id == id);
+
+
                 if (result is null)
                 {
-                    return NotFound("User is not found");
+                    return NotFound("Not found");
                 }
+                if (result.IsDeleted == true)
+                    throw new Exception("Not found");
                 return Ok(result);
             }
             catch
@@ -149,7 +157,7 @@ namespace Sign_Identity.API.Controllers
             }
         }
 
-        [HttpPost]
+        [HttpPost("Logout")]
         [Authorize(Roles = "Admin, Teacher, Student")]
         public async Task<IActionResult> LogOut()
         {
@@ -161,10 +169,55 @@ namespace Sign_Identity.API.Controllers
 
                 return Ok("Loged Out");
             }
-            catch(Exception ex) 
+            catch (Exception ex)
             {
                 return BadRequest(ex.Message);
             }
+        }
+
+        [HttpDelete("{accountId}")]
+        public async Task<IActionResult> DeleteAccount(string accountId)
+        {
+            var user = await _userManager.FindByIdAsync(accountId);
+
+            if (user is null)
+                throw new Exception("Not found");
+
+            if (user.IsDeleted == true)
+                throw new Exception("Not found");
+            //var deleteUser = await _userManager.DeleteAsync(user);
+            user.IsDeleted = true;
+            user.DeletedDate = DateTime.UtcNow;
+            var result = await _userManager.UpdateAsync(user);
+
+            if (!result.Succeeded)
+                throw new Exception("No deleted");
+            return Ok(result);
+        }
+
+        [HttpPut("{accountId}")]
+        public async Task<IActionResult> UpdateAccount(string accountId, UpdateDTO userUpdate)
+        {
+            var user = await _userManager.FindByIdAsync(accountId);
+
+            if (user is null)
+                throw new Exception("Not found");
+
+            if (user.IsDeleted == true)
+                throw new Exception("Not found");
+
+            user.FirstName = userUpdate.FirstName;
+            user.LastName = userUpdate.LastName;
+            user.Age = userUpdate.Age;
+            user.ModifiedDate = DateTime.UtcNow;
+            var result = await _userManager.UpdateAsync(user);
+
+            if (!result.Succeeded)
+                throw new Exception("No deleted");
+
+
+            return Ok(result);
+
         }
     }
 }
