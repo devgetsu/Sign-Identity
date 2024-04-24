@@ -7,6 +7,8 @@ using Microsoft.Extensions.FileProviders;
 using Sign_Identity.Application.Services.AuthServices;
 using Sign_Identity.Domain.DTOs;
 using Sign_Identity.Domain.Entities.Auth;
+using Sign_Identity.API.Filters;
+using Microsoft.AspNetCore.Mvc.Filters;
 
 namespace Sign_Identity.API.Controllers
 {
@@ -121,7 +123,8 @@ namespace Sign_Identity.API.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "Admin, Teacher")]
+        //[Authorize(Roles = "Admin, Teacher")]
+        [AuthorizeFilter]
         public async Task<IActionResult> GetAllUsers()
         {
             try
@@ -176,6 +179,8 @@ namespace Sign_Identity.API.Controllers
         }
 
         [HttpDelete("{accountId}")]
+        [DeleteActionFilter]
+        [MyResultFilter]
         public async Task<IActionResult> DeleteAccount(string accountId)
         {
             var user = await _userManager.FindByIdAsync(accountId);
@@ -196,6 +201,7 @@ namespace Sign_Identity.API.Controllers
         }
 
         [HttpPut("{accountId}")]
+        [UpdateResourceFilter]
         public async Task<IActionResult> UpdateAccount(string accountId, UpdateDTO userUpdate)
         {
             var user = await _userManager.FindByIdAsync(accountId);
