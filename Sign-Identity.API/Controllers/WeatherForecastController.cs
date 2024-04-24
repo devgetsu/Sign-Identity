@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Sign_Identity.API.Filters;
 
 namespace Sign_Identity.API.Controllers
 {
@@ -21,6 +22,7 @@ namespace Sign_Identity.API.Controllers
 
         [HttpGet(Name = "GetWeatherForecast")]
         [Authorize]
+        [ValidFilter]
         public IEnumerable<WeatherForecast> Get()
         {
             return Enumerable.Range(1, 5).Select(index => new WeatherForecast
